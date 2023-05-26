@@ -23,13 +23,13 @@ def get_data(query_by_db: dict) -> dict:
 
 def check(table: str) -> None:
     q = get_query(table)
-    ignored_cols = q.get('IGNORE_COLS')
+    ignored_cols, join_cols = q.get('IGNORE_COLS'), q.get('JOIN_COLS')
     data = get_data(q)
 
     merge = pd.merge(
         data.get('ORACLE'),
         data.get('MSSQL'),
-        on=['SECURITY_CODE', 'TRADE_DATE'],
+        on=join_cols,
         suffixes=['_O', '_M'],
         how='inner'
     )
