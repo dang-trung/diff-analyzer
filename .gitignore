@@ -38,3 +38,4 @@ ENV/
 # Notebooks
 /notebooks/
 *.toml
+results/*.txt

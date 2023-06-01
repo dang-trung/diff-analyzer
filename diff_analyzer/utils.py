@@ -36,8 +36,8 @@ def severity(
 
     if severity:
         sample = df[df[f'{c}_O'] != df[f'{c}_M']][
-            join_cols + [f'{c}_O', f'{c}_M']].sample(1).to_dict()
-        print(f'DUPLICATES: {pct_similar * 100:.1f}%{severity} - e.g. {sample}\n')
+            join_cols + [f'{c}_O', f'{c}_M']].sample(1).iloc[0].to_dict()
+        print(f'DUPLICATES: {pct_similar * 100:.1f}%{severity} - e.g. {sample}')
 
 
 def adjust_exchange_label(df: pd.DataFrame) -> None:
@@ -53,20 +53,38 @@ def adjust_exchange_label(df: pd.DataFrame) -> None:
     return df
 
 
-def stats(df: pd.DataFrame, col: str) -> float:
+def stats(df: pd.DataFrame, col: str, join_cols: list) -> float:
     c = df[col]
     num_obs = len(c)
+    mask = {
+        'MISSING': c.isna(),
+    }
+    sample = {}
+
     if c.dtype == 'float64':
-        col_stats = {
-            'MISSING': c.isna().sum() / num_obs,
-            'INFINITE': np.isinf(c).sum() / num_obs,
-            'ZERO': (c == 0).sum() / num_obs,
+        mask = mask | {
+            'INFINITE': np.isinf(c),
+            'ZERO': c == 0,
+        }
+
+        pct = {
+            k: mask[k].sum() / num_obs
+            for k in ['MISSING', 'INFINITE', 'ZERO']
+        }
+        sample = {
+            k:
+                f' - e.g. {df[mask[k]][join_cols + [col]].sample(1).iloc[0].to_dict()}'
+            for k in ['MISSING', 'INFINITE', 'ZERO'] if pct[k] > 0
         }
     else:
-        col_stats = {
-            'MISSING': c.isna().sum() / num_obs,
+        pct = {k: mask[k].sum() / num_obs for k in ['MISSING']}
+        sample = {
+            k:
+                f' - e.g. {df[mask[k]][join_cols + [col]].sample(1).iloc[0].to_dict()}'
+            for k in ['MISSING'] if pct[k] > 0
         }
-    
-    col_stats = ' - '.join([f'{k}: {v * 100:.1f}%' for k, v in col_stats.items()])
-    
-    print(f'[{col}]\n{col_stats}')
+    col_stats = '\n'.join(
+        [f'{k}: {pct.get(k) * 100:.1f}%{sample.get(k, "")}' for k in pct.keys()]
+    )
+
+    print(f'\n[{col}]\n{col_stats}')
